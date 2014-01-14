@@ -289,7 +289,8 @@ reverse = foldLeft (flip (:.)) Nil
 notReverse ::
   List a
   -> List a
-notReverse = error "reasonably sure this isn't possible..."
+-- TODO: ???
+notReverse = reverse
 
 hlist ::
   List a
