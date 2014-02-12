@@ -27,24 +27,23 @@ newtype StateT s f a =
 
 -- | Implement the `Functor` instance for @StateT s f@ given a @Functor f@.
 instance Functor f => Functor (StateT s f) where
-  (<$>) =
-    error "todo"
+  f <$> StateT k = StateT (\s -> g <$> k s)
+    where g (a, s') = (f a, s')
 
 -- | Implement the `Apply` instance for @StateT s f@ given a @Bind f@.
 instance Bind f => Apply (StateT s f) where
-  (<*>) =
-    error "todo"
+  StateT kf <*> ka = StateT (\s -> g =<< kf s)
+    where g (h, s') = runStateT (h <$> ka) s'
 
 -- | Implement the `Applicative` instance for @StateT s f@ given a @Applicative f@.
 instance Monad f => Applicative (StateT s f) where
-  pure =
-    error "todo"
+  pure a = StateT (\s -> pure (a, s))
 
 -- | Implement the `Bind` instance for @StateT s f@ given a @Monad f@.
 -- Make sure the state value is passed through in `bind`.
 instance Monad f => Bind (StateT s f) where
-  (=<<) =
-    error "todo"
+  g =<< StateT ka = StateT (\s -> h =<< ka s)
+    where h (a, s') = runStateT (g a) s'
 
 instance Monad f => Monad (StateT s f) where
 
@@ -56,16 +55,14 @@ type State' s a =
 state' ::
   (s -> (a, s))
   -> State' s a
-state' =
-  error "todo"
+state' k = StateT $ Id . k
 
 -- | Provide an unwrapper for `State'` values.
 runState' ::
   State' s a
   -> s
   -> (a, s)
-runState' =
-  error "todo"
+runState' (StateT k) = runId . k
 
 -- | Run the `StateT` seeded with `s` and retrieve the resulting state.
 execT ::
@@ -73,16 +70,14 @@ execT ::
   StateT s f a
   -> s
   -> f s
-execT =
-  error "todo"
+execT (StateT k) s = snd <$> k s
 
 -- | Run the `State` seeded with `s` and retrieve the resulting state.
 exec' ::
   State' s a
   -> s
   -> s
-exec' =
-  error "todo"
+exec' st = snd . runState' st
 
 -- | Run the `StateT` seeded with `s` and retrieve the resulting value.
 evalT ::
@@ -90,31 +85,27 @@ evalT ::
   StateT s f a
   -> s
   -> f a
-evalT =
-  error "todo"
+evalT (StateT k) s = fst <$> k s
 
 -- | Run the `State` seeded with `s` and retrieve the resulting value.
 eval' ::
   State' s a
   -> s
   -> a
-eval' =
-  error "todo"
+eval' st = fst . runState' st
 
 -- | A `StateT` where the state also distributes into the produced value.
 getT ::
   Monad f =>
   StateT s f s
-getT =
-  error "todo"
+getT = StateT (\s -> pure (s, s))
 
 -- | A `StateT` where the resulting state is seeded with the given value.
 putT ::
   Monad f =>
   s
   -> StateT s f ()
-putT =
-  error "todo"
+putT s = StateT (\_ -> pure ((), s))
 
 -- | Remove all duplicate elements in a `List`.
 --
