@@ -1,6 +1,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RebindableSyntax #-}
 
 module Course.Parser where
 
@@ -13,7 +14,7 @@ import Course.Bind
 import Course.Monad
 import Course.List
 import Course.Optional
-import qualified Prelude as P
+import Data.Char
 
 -- $setup
 -- >>> :set -XOverloadedStrings
@@ -21,15 +22,15 @@ import qualified Prelude as P
 
 type Input = Chars
 
-data ParseResult a =
+data ParseError =
   UnexpectedEof
   | ExpectedEof Input
   | UnexpectedChar Char
   | Failed
-  | Result Input a
   deriving Eq
 
-instance Show a => Show (ParseResult a) where
+
+instance Show ParseError where
   show UnexpectedEof =
     "Expected end of stream"
   show (ExpectedEof i) =
@@ -38,36 +39,23 @@ instance Show a => Show (ParseResult a) where
     stringconcat ["Unexpected character", show [c]]
   show Failed =
     "Parse failed"
+
+data ParseResult a =
+  ErrorResult ParseError
+  | Result Input a
+  deriving Eq
+
+instance Show a => Show (ParseResult a) where
+  show (ErrorResult e) =
+    show e
   show (Result i a) =
     stringconcat ["Result >", hlist i, "< ", show a]
-
--- Function to also access the input while binding parsers.
-withResultInput ::
-  (Input -> a -> ParseResult b)
-  -> ParseResult a
-  -> ParseResult b
-withResultInput _ UnexpectedEof =
-  UnexpectedEof
-withResultInput _ (ExpectedEof i) =
-  ExpectedEof i
-withResultInput _ (UnexpectedChar c) =
-  UnexpectedChar c
-withResultInput _ Failed =
-  Failed
-withResultInput f (Result i a) =
-  f i a
 
 -- Function to determine is a parse result is an error.
 isErrorResult ::
   ParseResult a
   -> Bool
-isErrorResult UnexpectedEof =
-  True
-isErrorResult (ExpectedEof _) =
-  True
-isErrorResult (UnexpectedChar _) =
-  True
-isErrorResult Failed =
+isErrorResult (ErrorResult _) =
   True
 isErrorResult (Result _ _) =
   False
@@ -75,6 +63,13 @@ isErrorResult (Result _ _) =
 data Parser a = P {
   parse :: Input -> ParseResult a
 }
+
+-- Function to produce a parser with the given result.
+result ::
+  ParseResult a
+  -> Parser a
+result =
+  P . const
 
 -- | Return a parser that always succeeds with the given value and consumes no input.
 --
@@ -114,8 +109,6 @@ character =
 --
 --   * if that parser fails with an error the returned parser fails with that error.
 --
--- /Tip:/ Use @withResultInput@.
---
 -- >>> parse (bindParser (\c -> if c == 'x' then character else valueParser 'v') character) "abc"
 -- Result >bc< 'v'
 --
@@ -151,7 +144,7 @@ fbindParser =
 --
 --   * if that parser fails with an error the returned parser fails with that error.
 --
--- /Tip:/ Use @bindParser@.
+-- /Tip:/ Use @bindParser@ or @fbindParser@.
 --
 -- >>> parse (character >>> valueParser 'v') "abc"
 -- Result >bc< 'v'
@@ -287,7 +280,7 @@ digit =
 --
 --   * The input does not produce a value series of digits
 --
--- /Tip:/ Use the @bindParser@, @valueParser@, @list@, @reads@ and @digit@
+-- /Tip:/ Use the @bindParser@, @valueParser@, @list@, @read@ and @digit@
 -- functions.
 natural ::
   Parser Int
@@ -376,7 +369,7 @@ sequenceParser =
 -- | Return a parser that produces the given number of values off the given parser.
 -- This parser fails if the given parser fails in the attempt to produce the given number of values.
 --
--- /Tip:/ Use @sequenceParser@ and @Prelude.replicate@.
+-- /Tip:/ Use @sequenceParser@ and @List.replicate@.
 --
 -- >>> parse (thisMany 4 upper) "ABCDef"
 -- Result >ef< "ABCD"
@@ -412,12 +405,12 @@ ageParser =
 -- | Write a parser for Person.firstName.
 -- /First Name: non-empty string that starts with a capital letter/
 --
--- /Tip:/ Use @bindParser@, @value@, @upper@, @list@ and @lower@.
+-- /Tip:/ Use @bindParser@, @valueParser@, @upper@, @list@ and @lower@.
 --
--- λ> parse firstNameParser "Abc"
+-- >>> parse firstNameParser "Abc"
 -- Result >< "Abc"
 --
--- λ> isErrorResult (parse firstNameParser "abc")
+-- >>> isErrorResult (parse firstNameParser "abc")
 -- True
 firstNameParser ::
   Parser Chars
@@ -428,7 +421,7 @@ firstNameParser =
 --
 -- /Surname: string that starts with a capital letter and is followed by 5 or more lower-case letters./
 --
--- /Tip:/ Use @bindParser@, @value@, @upper@, @thisMany@, @lower@ and @list@.
+-- /Tip:/ Use @bindParser@, @valueParser@, @upper@, @thisMany@, @lower@ and @list@.
 --
 -- >>> parse surnameParser "Abcdef"
 -- Result >< "Abcdef"
@@ -488,7 +481,7 @@ phoneBodyParser =
 --
 -- /Phone: ... but must start with a digit and end with a hash (#)./
 --
--- /Tip:/ Use @bindParser@, @value@, @digit@, @phoneBodyParser@ and @is@.
+-- /Tip:/ Use @bindParser@, @valueParser@, @digit@, @phoneBodyParser@ and @is@.
 --
 -- >>> parse phoneParser "123-456#"
 -- Result >< "123-456"
@@ -509,7 +502,7 @@ phoneParser =
 -- | Write a parser for Person.
 --
 -- /Tip:/ Use @bindParser@,
---            @value@,
+--            @valueParser@,
 --            @(>>>)@,
 --            @ageParser@,
 --            @firstNameParser@,
@@ -580,9 +573,3 @@ instance Bind Parser where
     error "todo"
 
 instance Monad Parser where
-
-instance P.Monad Parser where
-  (>>=) =
-    flip (=<<)
-  return =
-    pure

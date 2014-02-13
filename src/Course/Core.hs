@@ -1,5 +1,6 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE RebindableSyntax #-}
 
 module Course.Core(
   Eq(..)
@@ -21,6 +22,8 @@ module Course.Core(
 , undefined
 , const
 , flip
+, curry
+, uncurry
 , id
 , otherwise
 , (.)
@@ -40,6 +43,7 @@ module Course.Core(
 , (***)
 , IsString(..)
 , module Data.Char
+, ifThenElse
 ) where
 
 
@@ -64,6 +68,8 @@ import Prelude(
   , undefined
   , const
   , flip
+  , curry
+  , uncurry
   , id
   , otherwise
   , (.)
@@ -93,3 +99,13 @@ import Control.Arrow(
   , (***)
   )
 import Data.Char
+
+ifThenElse ::
+  Bool
+  -> a
+  -> a
+  -> a
+ifThenElse True t _ =
+  t
+ifThenElse False _ f =
+  f

@@ -14,6 +14,7 @@ module Course.List where
 
 import Course.Core
 import Course.Optional
+import qualified System.Environment as E
 import qualified Prelude as P
 import qualified Numeric as N
 
@@ -293,6 +294,7 @@ produce ::
 produce f a = a :. produce f (f a)
 
 -- | Do anything other than reverse a list.
+-- Is it even possible?
 --
 -- >>> notReverse Nil
 -- []
@@ -347,6 +349,11 @@ getLine ::
   IO Chars
 getLine =
   P.fmap listh P.getLine
+
+getArgs ::
+  IO (List Chars)
+getArgs =
+  P.fmap (listh . P.fmap listh) E.getArgs
 
 isPrefixOf ::
   Eq a =>

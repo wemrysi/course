@@ -78,6 +78,12 @@ instance Functor MaybeListZipper where
 
 -- | Create a `MaybeListZipper` positioning the focus at the head.
 --
+-- ->>> fromList (1 :. 2 :. 3 :. Nil)
+-- [] >1< [2,3]
+--
+-- >>> fromList Nil
+-- ><
+--
 -- prop> xs == toListZ (fromList xs)
 fromList ::
   List a
@@ -143,6 +149,15 @@ asMaybeZipper f (IsZ z) =
   asMaybeZipper
 
 -- | Convert the given zipper back to a list.
+--
+-- >>> toList <$> toOptional (fromList Nil)
+-- Empty
+--
+-- >>> toList (ListZipper Nil 1 (2:.3:.4:.Nil))
+-- [1,2,3,4]
+--
+-- >>> toList (ListZipper (3:.2:.1:.Nil) 4 (5:.6:.7:.Nil))
+-- [1,2,3,4,5,6,7]
 toList ::
   ListZipper a
   -> List a
@@ -391,6 +406,12 @@ moveRightN =
 --
 -- >>> moveLeftN' (-4) (zipper [3,2,1] 4 [5,6,7])
 -- Left 3
+--
+-- >>> moveLeftN' 4 (zipper [3,2,1] 4 [5,6,7,8,9])
+-- Left 3
+--
+-- >>> moveLeftN' (-4) (zipper [5,4,3,2,1] 6 [7,8,9])
+-- Left 3
 moveLeftN' ::
   Int
   -> ListZipper a
@@ -442,12 +463,12 @@ nth =
 -- | Return the absolute position of the current focus in the zipper.
 --
 -- >>> index (zipper [3,2,1] 4 [5,6,7])
--- Full 3
+-- 3
 --
--- prop> optional True (\i -> optional False (==z) (toOptional (nth i z))) (index z)
+-- prop> optional True (\z' -> index z' == i) (toOptional (nth i z))
 index ::
   ListZipper a
-  -> Optional Int
+  -> Int
 index =
   error "todo"
 

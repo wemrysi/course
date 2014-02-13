@@ -21,7 +21,7 @@ instructions are not contained herein.
 
 ### Getting Started
 
-1. Install the Glasgow Haskell Compiler (GHC) version 7 or higher.
+1. Install the Glasgow Haskell Compiler (GHC) version 7.6 or higher.
 
 2. Change to the directory containing this document.
 
@@ -148,6 +148,7 @@ After this, the following progression of modules is recommended:
 * `Course.Applicative`
 * `Course.Bind`
 * `Course.Monad`
+* `Course.FileIO`
 * `Course.State`
 * `Course.StateT`
 * `Course.Extend`

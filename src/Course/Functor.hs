@@ -74,6 +74,26 @@ instance Functor ((->) t) where
   -> f a
 (<$) = (<$>) . const
 
+-- | Anonymous map producing unit value.
+--
+-- >>> void [1,2,3]
+-- [(),(),()]
+--
+-- >>> void (Full 7)
+-- Full ()
+--
+-- >>> void Empty
+-- Empty
+--
+-- >>> void (+10) 5
+-- ()
+void ::
+  Functor f =>
+  f a
+  -> f ()
+void =
+  error "todo"
+
 -----------------------
 -- SUPPORT LIBRARIES --
 -----------------------

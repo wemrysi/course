@@ -1,5 +1,6 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE RebindableSyntax #-}
 
 module Course.MoreParser where
 
@@ -9,6 +10,7 @@ import Course.List
 import Course.Optional
 import Course.Applicative
 import Course.Apply
+import Course.Bind
 import Course.Traversable
 
 -- $setup
