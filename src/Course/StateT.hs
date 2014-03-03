@@ -37,6 +37,10 @@ instance Functor f => Functor (StateT s f) where
 --
 -- >>> runStateT (pure (+2) <*> ((pure 2) :: StateT Int List Int)) 0
 -- [(4,0)]
+--
+-- >>> import qualified Prelude as P
+-- >>> runStateT (StateT (\s -> Full ((+2), s P.++ [1])) <*> (StateT (\s -> Full (2, s P.++ [2])))) [0]
+-- Full (4,[0,1,2])
 instance Bind f => Apply (StateT s f) where
   StateT kf <*> ka = StateT (\s -> g =<< kf s)
     where g (h, s') = runStateT (h <$> ka) s'
