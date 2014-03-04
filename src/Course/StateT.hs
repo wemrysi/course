@@ -148,8 +148,8 @@ distinct' ::
   (Ord a, Num a) =>
   List a
   -> List a
-distinct' =
-  error "todo"
+distinct' = listh . S.toList . flip exec S.empty . filtering isNovel
+  where isNovel x = (\seen -> S.member x seen <$ (put $ S.insert x seen)) =<< get
 
 -- | Remove all duplicate elements in a `List`.
 -- However, if you see a value greater than `100` in the list,
@@ -166,8 +166,10 @@ distinctF ::
   (Ord a, Num a) =>
   List a
   -> Optional (List a)
-distinctF =
-  error "todo"
+distinctF xs = listh . S.toList <$> execT (filtering isNovel xs) S.empty
+  where isNovel x 
+          | x > 100   = StateT $ const Empty
+          | otherwise = (\seen -> S.member x seen <$ (putT $ S.insert x seen)) =<< getT
 
 -- | An `OptionalT` is a functor of an `Optional` value.
 data OptionalT f a =
