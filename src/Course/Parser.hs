@@ -32,11 +32,11 @@ data ParseError =
 
 instance Show ParseError where
   show UnexpectedEof =
-    "Expected end of stream"
+    "Unexpected end of stream"
   show (ExpectedEof i) =
     stringconcat ["Expected end of stream, but got >", show i, "<"]
   show (UnexpectedChar c) =
-    stringconcat ["Unexpected character", show [c]]
+    stringconcat ["Unexpected character: ", show [c]]
   show Failed =
     "Parse failed"
 
@@ -64,12 +64,12 @@ data Parser a = P {
   parse :: Input -> ParseResult a
 }
 
--- Function to produce a parser with the given result.
-result ::
-  ParseResult a
+-- | Produces a parser that always fails with @UnexpectedChar@ using the given character.
+unexpectedCharParser ::
+  Char
   -> Parser a
-result =
-  P . const
+unexpectedCharParser c =
+  P (\_ -> ErrorResult (UnexpectedChar c))
 
 -- | Return a parser that always succeeds with the given value and consumes no input.
 --
@@ -102,6 +102,29 @@ character ::
 character =
   error "todo"
 
+-- | Return a parser that maps any succeeding result with the given function.
+--
+-- >>> parse (mapParser succ character) "amz"
+-- Result >mz< 'b'
+--
+-- parse (mapParser (+10) (valueParser 7)) ""
+-- Result >< 17
+mapParser ::
+  (a -> b)
+  -> Parser a
+  -> Parser b
+mapParser =
+  error "todo"
+
+-- | This is @mapParser@ with the arguments flipped.
+-- It might be more helpful to use this function if you prefer this argument order.
+flmapParser ::
+  Parser a
+  -> (a -> b)
+  -> Parser b
+flmapParser =
+  flip mapParser
+
 -- | Return a parser that puts its input into the given parser and
 --
 --   * if that parser succeeds with a value (a), put that value into the given function
@@ -130,11 +153,13 @@ bindParser ::
 bindParser =
   error "todo"
 
-fbindParser ::
+-- | This is @bindParser@ with the arguments flipped.
+-- It might be more helpful to use this function if you prefer this argument order.
+flbindParser ::
   Parser a
   -> (a -> Parser b)
   -> Parser b
-fbindParser =
+flbindParser =
   flip bindParser
 
 -- | Return a parser that puts its input into the given parser and
@@ -186,7 +211,7 @@ infixl 3 |||
 
 -- | Return a parser that continues producing a list of values from the given parser.
 --
--- /Tip:/ Use @many1@, @valueParser@ and @(|||)@.
+-- /Tip:/ Use @list1@, @valueParser@ and @(|||)@.
 --
 -- >>> parse (list (character)) ""
 -- Result >< ""
@@ -215,20 +240,20 @@ list =
 -- continues producing a list of values from the given parser (to ultimately produce a non-empty list).
 -- The returned parser fails if The input is empty.
 --
--- /Tip:/ Use @bindParser@, @list@ and @value@.
+-- /Tip:/ Use @bindParser@, @list@ and @valueParser@.
 --
--- >>> parse (many1 (character)) "abc"
+-- >>> parse (list1 (character)) "abc"
 -- Result >< "abc"
 --
--- >>> parse (many1 (character *> valueParser 'v')) "abc"
+-- >>> parse (list1 (character *> valueParser 'v')) "abc"
 -- Result >< "vvv"
 --
--- >>> isErrorResult (parse (many1 (character *> valueParser 'v')) "")
+-- >>> isErrorResult (parse (list1 (character *> valueParser 'v')) "")
 -- True
-many1 ::
+list1 ::
   Parser a
   -> Parser (List a)
-many1 =
+list1 =
   error "todo"
 
 -- | Return a parser that produces a character but fails if
@@ -307,7 +332,7 @@ space =
 --
 --   * The first produced character is not a space.
 --
--- /Tip:/ Use the @many1@ and @space@ functions.
+-- /Tip:/ Use the @list1@ and @space@ functions.
 spaces1 ::
   Parser Chars
 spaces1 =
@@ -352,7 +377,7 @@ alpha =
 -- | Return a parser that sequences the given list of parsers by producing all their results
 -- but fails on the first failing parser of the list.
 --
--- /Tip:/ Use @bindParser@ and @value@.
+-- /Tip:/ Use @bindParser@ and @valueParser@.
 -- /Tip:/ Optionally use @List#foldRight@. If not, an explicit recursive call.
 --
 -- >>> parse (sequenceParser (character :. is 'x' :. upper :. Nil)) "axCdef"
@@ -403,7 +428,7 @@ ageParser =
   error "todo"
 
 -- | Write a parser for Person.firstName.
--- /First Name: non-empty string that starts with a capital letter/
+-- /First Name: non-empty string that starts with a capital letter and is followed by zero or more lower-case letters/
 --
 -- /Tip:/ Use @bindParser@, @valueParser@, @upper@, @list@ and @lower@.
 --
@@ -436,23 +461,23 @@ surnameParser ::
 surnameParser =
   error "todo"
 
--- | Write a parser for Person.gender.
+-- | Write a parser for Person.smoker.
 --
--- /Gender: character that must be @'m'@ or @'f'@/
+-- /Smoker: character that must be @'y'@ or @'n'@/
 --
 -- /Tip:/ Use @is@ and @(|||)@./
 --
--- >>> parse genderParser "mabc"
--- Result >abc< 'm'
+-- >>> parse smokerParser "yabc"
+-- Result >abc< 'y'
 --
--- >>> parse genderParser "fabc"
--- Result >abc< 'f'
+-- >>> parse smokerParser "nabc"
+-- Result >abc< 'n'
 --
--- >>> isErrorResult (parse genderParser "abc")
+-- >>> isErrorResult (parse smokerParser "abc")
 -- True
-genderParser ::
+smokerParser ::
   Parser Char
-genderParser =
+smokerParser =
   error "todo"
 
 -- | Write part of a parser for Person.phoneBody.
@@ -504,44 +529,45 @@ phoneParser =
 -- /Tip:/ Use @bindParser@,
 --            @valueParser@,
 --            @(>>>)@,
+--            @spaces1@,
 --            @ageParser@,
 --            @firstNameParser@,
 --            @surnameParser@,
---            @genderParser@,
+--            @smokerParser@,
 --            @phoneParser@.
 --
 -- >>> isErrorResult (parse personParser "")
 -- True
 --
--- >>> isErrorResult (parse personParser "12x Fred Clarkson m 123-456.789#")
+-- >>> isErrorResult (parse personParser "12x Fred Clarkson y 123-456.789#")
 -- True
 --
--- >>> isErrorResult (parse personParser "123 fred Clarkson m 123-456.789#")
+-- >>> isErrorResult (parse personParser "123 fred Clarkson y 123-456.789#")
 -- True
 --
--- >>> isErrorResult (parse personParser "123 Fred Cla m 123-456.789#")
+-- >>> isErrorResult (parse personParser "123 Fred Cla y 123-456.789#")
 -- True
 --
--- >>> isErrorResult (parse personParser "123 Fred clarkson m 123-456.789#")
+-- >>> isErrorResult (parse personParser "123 Fred clarkson y 123-456.789#")
 -- True
 --
 -- >>> isErrorResult (parse personParser "123 Fred Clarkson x 123-456.789#")
 -- True
 --
--- >>> isErrorResult (parse personParser "123 Fred Clarkson m 1x3-456.789#")
+-- >>> isErrorResult (parse personParser "123 Fred Clarkson y 1x3-456.789#")
 -- True
 --
--- >>> isErrorResult (parse personParser "123 Fred Clarkson m -123-456.789#")
+-- >>> isErrorResult (parse personParser "123 Fred Clarkson y -123-456.789#")
 -- True
 --
--- >>> isErrorResult (parse personParser "123 Fred Clarkson m 123-456.789")
+-- >>> isErrorResult (parse personParser "123 Fred Clarkson y 123-456.789")
 -- True
 --
--- >>> parse personParser "123 Fred Clarkson m 123-456.789#"
--- Result >< Person {age = 123, firstName = "Fred", surname = "Clarkson", gender = 'm', phone = "123-456.789"}
+-- >>> parse personParser "123 Fred Clarkson y 123-456.789#"
+-- Result >< Person {age = 123, firstName = "Fred", surname = "Clarkson", smoker = 'y', phone = "123-456.789"}
 --
--- >>> parse personParser "123 Fred Clarkson m 123-456.789# rest"
--- Result > rest< Person {age = 123, firstName = "Fred", surname = "Clarkson", gender = 'm', phone = "123-456.789"}
+-- >>> parse personParser "123 Fred Clarkson y 123-456.789# rest"
+-- Result > rest< Person {age = 123, firstName = "Fred", surname = "Clarkson", smoker = 'y', phone = "123-456.789"}
 personParser ::
   Parser Person
 personParser =
